@@ -4,13 +4,26 @@ A read-only, self-hosted dashboard for one or more openHop **Repeater** web APIs
 
 ## Start with Docker
 
-From the extracted project directory, run:
+From the project directory, create your local settings file once. If you already have a `.env` with repeater tokens, add the settings from `.env.example` to that file.
+
+```sh
+test -f .env || cp .env.example .env
+```
+
+Set `RELAY_DESK_BIND_IP` to an IP assigned to your Docker host and `RELAY_DESK_PORT` to the port you want to publish. For example, if your server’s LAN address is `192.168.1.50`, use:
+
+```dotenv
+RELAY_DESK_BIND_IP=192.168.1.50
+RELAY_DESK_PORT=8080
+```
+
+Start the service, or apply changes after a `git pull`, with:
 
 ```sh
 docker compose up -d --build
 ```
 
-Open **http://localhost:8080**. The shipped empty inventory displays a labeled sample station. Requires Docker with Compose 2.24 or newer for the optional environment file.
+Open **http://192.168.1.50:8080** for that example. With the default settings, open **http://127.0.0.1:8080**. The local `.env` is ignored by Git. The shipped empty inventory displays a labeled sample station. Requires Docker with Compose 2.24 or newer for the optional environment file.
 
 ## Manage repeaters in the browser
 
@@ -45,7 +58,7 @@ HILLTOP_KEY=replace-with-second-token
 
 Omit `apiKeyEnv` for endpoints that permit anonymous reads. For remote connections use HTTPS or a trusted VPN. For a private CA, mount its PEM certificate and set `NODE_EXTRA_CA_CERTS` to the container path. The dashboard sends API tokens server-side as `X-API-Key`.
 
-Compose publishes to loopback and the viewer has no sign-in. To view a remote installation, forward the port with `ssh -L 8080:127.0.0.1:8080 user@docker-host`, then open the same local URL. Put authentication and TLS in front of the dashboard if sharing it.
+Compose publishes to loopback by default. Binding to a LAN address gives clients on that interface access to the dashboard and its fleet controls. The viewer has no sign-in. To view a remote installation using the default settings, forward the port with `ssh -L 8080:127.0.0.1:8080 user@docker-host`, then open the same local URL. Put authentication and TLS in front of the dashboard if sharing it.
 
 ## Using the dashboard
 
