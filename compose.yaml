@@ -5,6 +5,7 @@ services:
       - "127.0.0.1:8080:8080"
     volumes:
       - ./config/repeaters.json:/app/config/repeaters.json:ro
+      - fleet-data:/app/data
     env_file:
       - path: .env
         required: false
@@ -12,3 +13,6 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
+
+volumes:
+  fleet-data:
