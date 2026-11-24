@@ -33,13 +33,13 @@ Start the service, or apply changes after a `git pull`, with:
 docker compose up -d --build
 ```
 
-Open **http://192.168.1.50:8080** for that example. With the default settings, open **http://127.0.0.1:8080**. The local `.env` is ignored by Git. An empty inventory opens a blank dashboard. Choose **Manage repeaters** to add the first station. Requires Docker with Compose 2.24 or newer for the optional environment file.
+Open **http://192.168.1.50:8080** for that example. With the default settings, open **http://127.0.0.1:8080**. The dashboard answers to IP addresses and `localhost`. To open it by a host name such as `relay.home.arpa`, list that name in `RELAY_DESK_HOSTNAMES` (comma-separated). Other names are refused, which protects the fleet controls and readings from DNS-rebinding pages. The local `.env` is ignored by Git. An empty inventory opens a blank dashboard. Choose **Manage repeaters** to add the first station. Requires Docker with Compose 2.24 or newer for the optional environment file.
 
 ## Manage repeaters in the browser
 
 Choose **Manage repeaters**, enter a display name, the repeater base URL reachable from the container, and an optional API token. Select **Add repeater** to switch to it immediately. **Remove** asks for confirmation and removes the station from this dashboard. Removing the last station clears its readings and returns to the empty dashboard.
 
-Compose stores these changes in the named `fleet-data` volume. UI-entered tokens are stored server-side in a restricted-permission JSON file in that volume. Protect volume backups. Anyone with access to the dashboard can manage its fleet. The default port binding is loopback. If using an authenticated reverse proxy, preserve the original Host header. Native installs can set `OPENHOP_DATA` to a writable directory (default `./data` beside the server).
+Compose stores these changes in the named `fleet-data` volume. UI-entered tokens are stored server-side in a restricted-permission JSON file in that volume. Protect volume backups. Anyone with access to the dashboard can manage its fleet. The default port binding is loopback. If using an authenticated reverse proxy, preserve the original Host header and add the proxy's public host name to `RELAY_DESK_HOSTNAMES`. Native installs can set `OPENHOP_DATA` to a writable directory (default `./data` beside the server).
 
 ## Configure repeaters with a file
 
@@ -92,6 +92,6 @@ The visible page refreshes every 30 seconds. Identical reads share a 15-second c
 
 ## Local development
 
-Run `node server.mjs` from this directory with Node 24.2 or newer. It listens on loopback port 8080. Override with `PORT`, `HOST` or `OPENHOP_CONFIG`. For native development with a token file, run `node --env-file=.env server.mjs`. Run the tests with `node --test`.
+Run `node server.mjs` from this directory with Node 24.2 or newer. It listens on loopback port 8080. Override with `PORT`, `HOST`, `OPENHOP_CONFIG` or `RELAY_DESK_HOSTNAMES`. For native development with a token file, run `node --env-file=.env server.mjs`. Run the tests with `node --test`.
 
 API references: [Repeater OpenAPI](https://github.com/openhop-dev/openhop_repeater/blob/main/repeater/web/openapi.yaml), [sensors](https://docs.openhop.dev/projects/openhop-repeater/sensors/), [plugin API authentication](https://docs.openhop.dev/projects/openhop-repeater/plugin-administration/).

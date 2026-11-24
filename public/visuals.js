@@ -16,12 +16,18 @@ const instrumentViews = (() => {
   const isRecord=v=>v!==null && typeof v==='object' && !Array.isArray(v)
   const scalar=v=>v===null || typeof v!=='object'
   const label=k=>human(k)
-    .replace(/\b(cpu|ram|gps|mqtt|rf|snr|rssi|crc|usb|tcp|udp)\b/gi,s=>s.toUpperCase())
+    .replace(/\b(cpu|ram|gps|mqtt|rf|snr|rssi|crc|usb|tcp|udp|os|pid|ip|id|api|url|lbt|acl)\b/gi,s=>s.toUpperCase())
     .replace(/\bdbm\b/gi,'dBm').replace(/\bdb\b/gi,'dB')
     .replace(/\btemp(?:erature)? c$/i,'temperature (°C)')
     .replace(/^./,c=>c.toUpperCase())
   const isPercent=k=>/(^|[ _])(?:percent(?:age)?|pct)(?:$|[ _])/i.test(k)
   const trackable=k=>isPercent(k)||/(temperature|temp_c|voltage|humidity|current_ma|power_mw|power_w|rssi|snr|noise_floor|speed_kmh|altitude_m|load_avg)/i.test(k)
+  // Unix times in seconds or milliseconds under time-like keys, e.g. timestamp, boot_time, created_at.
+  function epoch(key,value){
+    if(typeof value!=='number' || !/(?:^|_)(?:timestamp|time|ts)$|_at$/i.test(key))return null
+    const ms=value>=1e12 && value<1e13?value:value>=1e9 && value<1e10?value*1000:NaN
+    return Number.isFinite(ms)?new Date(ms).toLocaleString():null
+  }
   function showValue(key,value) {
     if(key==='direction' && (value==='RX'||value==='TX'))return el('span',value,'direction-key '+value.toLowerCase())
     if(isPercent(key) && Number.isFinite(value)){
@@ -32,8 +38,9 @@ const instrumentViews = (() => {
     if(value===null)return el('span','—','reading-null')
     if(typeof value==='boolean')return el('span',value?'Yes':'No',value?'flag on':'flag off')
     if(typeof value==='string' && /^(status|state)$/i.test(key))return el('span',value,'flag')
-    const text=el('span',format(value)+(isPercent(key)&&Number.isFinite(value)?'%':''))
-    return text
+    const when=epoch(key,value)
+    if(when){const stamp=el('span',when);stamp.title=String(value);return stamp}
+    return el('span',format(value))
   }
   function makeMeter(name,value,max) {
     const meter=el('meter')

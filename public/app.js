@@ -2,11 +2,11 @@
 const $=id=>document.getElementById(id)
 const el=(tag,txt,cls)=>{const n=document.createElement(tag);if(txt!=null)n.textContent=String(txt);if(cls)n.className=cls;return n}
 const human=k=>k.replaceAll('_',' ')
-const format=v=>v==null?'—':typeof v==='number'?v.toLocaleString(undefined,{maximumFractionDigits:8}):String(v)
+const format=v=>v==null?'—':typeof v==='number'?v.toLocaleString(undefined,{maximumFractionDigits:8}):typeof v==='boolean'?(v?'Yes':'No'):String(v)
 const unpack=v=>v?.data??v
 const time=v=>new Date(v).toLocaleTimeString()
 const uptime=s=>Number.isFinite(s)?Math.floor(s/86400)+'d '+Math.floor(s%86400/3600)+'h '+Math.floor(s%3600/60)+'m':'—'
-let fleet,page='Overview',node,epoch=0,busy=false
+let fleet,page='Overview',node,epoch=0,busy=false,lastRefresh=0
 function row(k,v){const r=el('div',null,'row');r.append(el('span',k),el('span',format(v)));return r}
 function panel(title){const n=el('section',null,'panel');n.append(el('h2',title));return n}
 function tree(value){
@@ -162,7 +162,7 @@ function render(paths,results){
       if(!r.ok || (page==='Overview' && p==='stats'))return
       if(p==='stats' && page==='GPS & location' && results[0].ok && unpack(results[0].value)?.position)return
       if(p==='stats' && Object.hasOwn(subsets,page)){
-        if(keys.length)c.append(instrumentViews.render(p,Object.fromEntries(keys.map(k=>[k,s[k]])),node.id,r.time,'Reported '+page.toLowerCase()))
+        if(keys.length)c.append(instrumentViews.render(p,Object.fromEntries(keys.map(k=>[k,s[k]])),node.id,r.time,'Reported '+page.replace(/^[A-Z](?=[a-z])/,c=>c.toLowerCase())))
         return
       }
       c.append(instrumentViews.render(p,unpack(r.value),node.id,r.time))
@@ -193,7 +193,7 @@ function showMap(pos,status,source){
 async function refresh(reset=false){
   if(!node)return
   if(busy&&!reset)return
-  const id=++epoch;busy=true
+  const id=++epoch;busy=true;lastRefresh=Date.now()
   if(reset)$('content').replaceChildren()
   delete $('state').dataset.health
   $('state').textContent='Reading '+node.name+'…';$('refresh').disabled=true
@@ -245,6 +245,10 @@ function select(){
     button.disabled=empty
     button.setAttribute('aria-current',button.textContent===page?'page':'false')
   }
+  // Keep the selection in the address so a reload or bookmark returns to it.
+  const hash=empty?'':'#'+new URLSearchParams({node:node.id,page})
+  if(location.hash!==hash)history.replaceState(null,'',hash||location.pathname)
+  document.title=empty?'Relay Desk · openHop monitor':page+' · '+node.name+' · Relay Desk'
   if(empty){
     ++epoch
     busy=false
@@ -284,12 +288,12 @@ async function changeFleet(method,url,body){
   $('manager-status').textContent='Saving…'
   try{
     const response=await fetch(url,{method,headers:{'Content-Type':'application/json','X-Relay-Desk':'fleet'},body:JSON.stringify(body)})
-    const data=await response.json()
-    if(!response.ok)throw Error(data.error||'Could not update the fleet.')
+    const data=await response.json().catch(()=>({}))
+    if(!response.ok)throw Error(data.error||'Could not update the fleet (HTTP '+response.status+').')
     if(method==='POST')$('add-form').reset()
     setFleet(data,data.selected??node?.id);renderManager()
     $('manager-status').textContent=method==='POST'?'Repeater added.':'Repeater removed.'
-  }catch(err){$('manager-status').textContent=err.message}
+  }catch(err){$('manager-status').textContent=err instanceof TypeError?'Dashboard unavailable. Try again.':err.message}
   finally{saving=false;buttons.forEach(b=>b.disabled=false)}
 }
 async function init(){
@@ -309,8 +313,11 @@ async function init(){
       e.target.selectedIndex=0
       if(heading){heading.focus({preventScroll:true});heading.scrollIntoView({block:'start'})}
     }
-    $('node').onchange=select;$('refresh').onclick=()=>refresh();setFleet(fleet)
+    const saved=new URLSearchParams(location.hash.slice(1))
+    if(Object.hasOwn(fleet.pages,saved.get('page')))page=saved.get('page')
+    $('node').onchange=select;$('refresh').onclick=()=>refresh();setFleet(fleet,saved.get('node'))
     setInterval(()=>{if(!document.hidden)refresh()},30000)
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden && Date.now()-lastRefresh>30000)refresh()})
   }catch{$('state').textContent='Could not load repeater inventory. Reload to retry.'}
 }
 init()

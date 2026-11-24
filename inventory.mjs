@@ -17,13 +17,25 @@ function address(value) {
 export async function openInventory(seeds, directory) {
   const file = join(directory, 'fleet.json')
   const configured = seeds.map((item, i) => {
-    if (item.apiKeyEnv && !process.env[item.apiKeyEnv]) throw Error('Missing API key environment variable for repeater '+(i+1))
-    return {id:String(i+1), name:item.name || new URL(item.url).hostname, base:address(item.url),
+    const entry = 'repeater '+(i+1)+' in the repeater configuration'
+    if (item === null || typeof item !== 'object') throw Error('Expected an object for '+entry)
+    let base
+    try { base = address(item.url) } catch (err) { throw Error('Invalid url for '+entry+'. '+err.message) }
+    if (item.apiKeyEnv && !process.env[item.apiKeyEnv]) throw Error('Missing API key environment variable for '+entry)
+    return {id:String(i+1), name:item.name || new URL(base).hostname, base,
       key:item.apiKeyEnv ? process.env[item.apiKeyEnv] : item.apiKey}
   })
   let state = {added:[], hidden:[]}
-  try { state = JSON.parse(await readFile(file, 'utf8')) }
-  catch (err) { if (err.code !== 'ENOENT') throw err }
+  try {
+    const saved = JSON.parse(await readFile(file, 'utf8'))
+    // Keep usable entries from an older or hand-edited file instead of failing every request.
+    state = {
+      added: (Array.isArray(saved?.added) ? saved.added : [])
+        .filter(n => typeof n?.id === 'string' && typeof n.base === 'string')
+        .map(n => ({...n, name: typeof n.name === 'string' && n.name ? n.name : n.base})),
+      hidden: (Array.isArray(saved?.hidden) ? saved.hidden : []).filter(h => typeof h === 'string')
+    }
+  } catch (err) { if (err.code !== 'ENOENT') throw err }
   function nodes() {
     return [...configured.filter(n => !state.hidden.includes(n.base)), ...state.added]
   }

@@ -102,6 +102,7 @@ h3 { margin: 9px 0 }
 .row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; border-top: 1px solid #38383d; padding: 9px 0; overflow-wrap: anywhere }
 .row span:first-child, small, .muted { color: var(--label) }
 .row span:last-child { text-align: right; font-family: var(--mono) }
+.row > button { overflow-wrap: break-word }
 .resource { margin: 9px 0; padding: 0 16px; overflow-wrap: anywhere }
 summary { cursor: pointer; padding: 12px 0; font-weight: 620 }
 .resource>summary { display: flex; align-items: baseline; gap: 10px }
@@ -111,9 +112,7 @@ summary { cursor: pointer; padding: 12px 0; font-weight: 620 }
 .resource>summary .error,.error { color: #ffae91 }
 .nested { margin: 4px 0 10px; border-left: 2px solid var(--edge); padding-left: 12px }
 .nested summary { padding: 6px }
-canvas,#map-screen iframe { display: block; width: 100%; background: var(--screen); border: 2px solid #090a0a; border-radius: 5px }
-canvas { height: 140px }
-#map-screen iframe { height: clamp(250px,40vh,460px) }
+#map-screen iframe { display: block; width: 100%; height: clamp(250px,40vh,460px); background: var(--screen); border: 2px solid #090a0a; border-radius: 5px }
 #empty-fleet {
   position: relative; isolation: isolate; overflow: hidden;
   display: grid; grid-template-columns: minmax(200px,1fr) minmax(0,1fr); align-items: center;
@@ -181,12 +180,12 @@ form button { margin-top: 8px }
 .mini-history figcaption,.traffic-plot small { color:var(--label); font:11px/1.6 var(--mono) }
 .viz-group { margin:12px 0 16px }
 .viz-group h3,.traffic-plot figcaption { margin:0 0 8px; color:var(--amber); font:650 13px/1.5 var(--legend); overflow-wrap:anywhere }
-.bar-row { display:grid; grid-template-columns:minmax(90px,1fr) minmax(60px,2fr) auto; align-items:center; gap:12px; margin:5px 0; overflow-wrap:anywhere }
-.bar-row strong { font:13px var(--mono) }
+.bar-row { display:grid; grid-template-columns:minmax(90px,1fr) minmax(60px,2fr) 6.5em; align-items:center; gap:12px; margin:5px 0; overflow-wrap:anywhere }
+.bar-row strong { font:13px var(--mono); text-align:right }
 .viz-scroll { overflow:auto; max-height:480px }
 .viz-scroll table { width:100%; border-collapse:collapse; text-align:left; font:13px/1.5 var(--mono) }
 .viz-scroll th { position:sticky; top:0; background:#303033; color:var(--label); font:650 12px var(--legend) }
-.viz-scroll td,.viz-scroll th { padding:8px; border-bottom:1px solid #3d3e41; overflow-wrap:anywhere; min-width:70px }
+.viz-scroll td,.viz-scroll th { padding:8px; border-bottom:1px solid #3d3e41; overflow-wrap:break-word; min-width:70px }
 .viz-pager { display:flex; align-items:center; justify-content:flex-end; gap:10px; padding:8px 0 }
 .value-list { display:flex; flex-wrap:wrap; gap:8px; margin:0; padding:0; list-style:none }
 .value-list li { border:1px solid var(--edge); padding:4px 8px; border-radius:4px; overflow-wrap:anywhere }
