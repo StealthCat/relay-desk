@@ -33,7 +33,7 @@ test('dashboard routes against a simulated two-repeater API',async t=>{
   const get=async(id,path)=>JSON.parse((await request('/api/reading?'+new URLSearchParams({node:id,path}))).body)
   const fleet=await request('/api/fleet')
   assert.equal(JSON.parse(fleet.body).nodes.length,2);assert.ok(!fleet.body.includes('sample-token'))
-  for(const asset of ['/','/app.js','/style.css','/health'])assert.equal((await request(asset)).status,200)
+  for(const asset of ['/','/app.js','/clock.js','/visuals.js','/style.css','/health'])assert.equal((await request(asset)).status,200)
   const [stats]=await Promise.all([get('1','stats'),get('1','stats')])
   assert.equal(calls,1);assert.equal(stats.history[0].rx,0);assert.equal(stats.history[0].tx,8);assert.equal(stats.value.identity_key,'[redacted]')
   assert.equal(stats.value.sensors.voltage,0);assert.equal((await get('2','stats')).error,'HTTP 401')

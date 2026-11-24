@@ -4,12 +4,12 @@ const el=(tag,txt,cls)=>{const n=document.createElement(tag);if(txt!=null)n.text
 const human=k=>k.replaceAll('_',' ')
 const format=v=>v==null?'—':typeof v==='number'?v.toLocaleString(undefined,{maximumFractionDigits:8}):typeof v==='boolean'?(v?'Yes':'No'):String(v)
 const unpack=v=>v?.data??v
-const time=v=>new Date(v).toLocaleTimeString()
+const time=stationClock.time
 const uptime=s=>Number.isFinite(s)?Math.floor(s/86400)+'d '+Math.floor(s%86400/3600)+'h '+Math.floor(s%3600/60)+'m':'—'
 let fleet,page='Overview',node,epoch=0,busy=false,lastRefresh=0
-function row(k,v){const r=el('div',null,'row');r.append(el('span',k),el('span',format(v)));return r}
+function row(k,v,key=k){const r=el('div',null,'row');r.append(el('span',k),stationClock.readout(key,v)??el('span',format(v)));return r}
 function panel(title){const n=el('section',null,'panel');n.append(el('h2',title));return n}
-function tree(value){
+function tree(value,key=''){
   const n=el('div')
   if(value===null || typeof value!=='object'){n.append(el('p',format(value)));return n}
   const entries=Object.entries(value)
@@ -17,9 +17,9 @@ function tree(value){
   for(const [k,v] of entries){
     if(v!==null && typeof v==='object'){
       const d=el('details',null,'nested');d.append(el('summary',human(k)+' · '+Object.keys(v).length))
-      d.addEventListener('toggle',()=>{if(d.open && d.children.length===1)d.append(tree(v))})
+      d.addEventListener('toggle',()=>{if(d.open && d.children.length===1)d.append(tree(v,k))})
       n.append(d)
-    }else n.append(row(human(k),v))
+    }else n.append(row(human(k),v,Array.isArray(value)?key:k))
   }
   return n
 }
@@ -107,10 +107,10 @@ function overview(r){
   const signals=Object.fromEntries(['radio_status','noise_floor_dbm','crc_error_count','forwarded_count','dropped_count','utilization_percent'].filter(k=>s[k]!=null).map(k=>[k,s[k]]))
   if(Object.keys(signals).length)panels.push(instrumentViews.render('stats',signals,node.id,r.time,'Radio & traffic'))
   if(Array.isArray(s.recent_packets) && s.recent_packets.length){
-    const latest=s.recent_packets.filter(p=>p && Number.isFinite(p.timestamp))
-      .sort((a,b)=>b.timestamp-a.timestamp).slice(0,8)
-      .map(p=>({
-        time:new Date(p.timestamp*(p.timestamp>1e12?1:1000)).toLocaleString(),
+    const latest=s.recent_packets.map(p=>({packet:p,ms:stationClock.milliseconds(p?.timestamp)}))
+      .filter(entry=>entry.ms!==null).sort((a,b)=>b.ms-a.ms).slice(0,8)
+      .map(({packet:p})=>({
+        time:p.timestamp,
         direction:p.transmitted===true?'TX':p.transmitted===false?'RX':null,
         rssi_dbm:p.rssi??null,snr_db:p.snr??null,bytes:p.length??null,
         drop_reason:p.drop_reason||null
@@ -207,7 +207,7 @@ async function refresh(reset=false){
     updatePanelMenu()
     const ok=results.filter(r=>r.ok).length
     $('state').dataset.health=ok===paths.length?'ready':'partial'
-    $('state').textContent=ok+' of '+paths.length+' sources available · Checked '+time(Math.min(...results.map(r=>r.time)))+(results.some(r=>/HTTP 40[13]/.test(r.error))?' · Check this repeater’s API token and permissions.':'')
+    $('state').textContent=ok+' of '+paths.length+' sources available · Checked '+stationClock.full(Math.min(...results.map(r=>r.time)))+(results.some(r=>/HTTP 40[13]/.test(r.error))?' · Check this repeater’s API token and permissions.':'')
     if(page==='Overview' && fleet.nodes.length>1) await showFleet(id,results[0])
   }catch{if(id===epoch)$('state').textContent='Dashboard connection lost. Displayed readings may be stale.'}
   finally{if(id===epoch){busy=false;$('refresh').disabled=false}}

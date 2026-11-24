@@ -226,3 +226,10 @@ main h2[tabindex] { scroll-margin-top:64px }
 .direction-key { display:inline-block; border:1px solid currentColor; border-radius:3px; padding:1px 5px; font:700 12px var(--mono) }
 .direction-key.rx { color:#92d7ba; background:#15241d }
 .direction-key.tx { color:#ffb270; background:#291e17 }
+
+.station-time { display:inline-flex; flex-wrap:wrap; align-items:baseline; gap:0 .6em; font:inherit; font-variant-numeric:tabular-nums }
+.clock-day { color:var(--label); white-space:nowrap }
+.clock-face { color:var(--green); font-family:var(--mono); white-space:nowrap }
+.viz-scroll .station-time { flex-direction:column }
+.viz-scroll tbody tr:nth-child(even) { background:#ffffff04 }
+.viz-scroll tbody tr:focus-within, .viz-scroll tbody tr:hover { background:#88b69c10 }
