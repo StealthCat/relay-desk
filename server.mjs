@@ -92,7 +92,7 @@ function reading(node,path) {
   pending.set(key,task)
   return task
 }
-const staticFiles={'/':['index.html','text/html'],'/visuals.js':['visuals.js','text/javascript'],'/app.js':['app.js','text/javascript'],'/style.css':['style.css','text/css']}
+const staticFiles={'/':['index.html','text/html'],'/clock.js':['clock.js','text/javascript'],'/visuals.js':['visuals.js','text/javascript'],'/app.js':['app.js','text/javascript'],'/style.css':['style.css','text/css']}
 export async function handleRequest(req,res){
   const send=(status,content,mime='application/json')=>{
     res.writeHead(status,{'Content-Type':mime+'; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; frame-src https://www.openstreetmap.org"})

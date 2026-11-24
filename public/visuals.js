@@ -22,13 +22,12 @@ const instrumentViews = (() => {
     .replace(/^./,c=>c.toUpperCase())
   const isPercent=k=>/(^|[ _])(?:percent(?:age)?|pct)(?:$|[ _])/i.test(k)
   const trackable=k=>isPercent(k)||/(temperature|temp_c|voltage|humidity|current_ma|power_mw|power_w|rssi|snr|noise_floor|speed_kmh|altitude_m|load_avg)/i.test(k)
-  // Unix times in seconds or milliseconds under time-like keys, e.g. timestamp, boot_time, created_at.
-  function epoch(key,value){
-    if(typeof value!=='number' || !/(?:^|_)(?:timestamp|time|ts)$|_at$/i.test(key))return null
-    const ms=value>=1e12 && value<1e13?value:value>=1e9 && value<1e10?value*1000:NaN
-    return Number.isFinite(ms)?new Date(ms).toLocaleString():null
-  }
   function showValue(key,value) {
+    if (/^uptime(?:_seconds|_secs)?$/.test(key) && Number.isFinite(value) && value>=0){
+      const elapsed=el('span',value<60?Math.floor(value)+' s':uptime(value))
+      elapsed.title=value+' seconds'
+      return elapsed
+    }
     if(key==='direction' && (value==='RX'||value==='TX'))return el('span',value,'direction-key '+value.toLowerCase())
     if(isPercent(key) && Number.isFinite(value)){
       const badge=el('span',(value>0 && value<0.01?'<0.01':value.toLocaleString(undefined,{maximumFractionDigits:2}))+'%')
@@ -38,9 +37,7 @@ const instrumentViews = (() => {
     if(value===null)return el('span','—','reading-null')
     if(typeof value==='boolean')return el('span',value?'Yes':'No',value?'flag on':'flag off')
     if(typeof value==='string' && /^(status|state)$/i.test(key))return el('span',value,'flag')
-    const when=epoch(key,value)
-    if(when){const stamp=el('span',when);stamp.title=String(value);return stamp}
-    return el('span',format(value))
+    return stationClock.readout(key,value)??el('span',format(value))
   }
   function makeMeter(name,value,max) {
     const meter=el('meter')
@@ -91,8 +88,6 @@ const instrumentViews = (() => {
       const i=Math.min(units.length-1,Math.max(0,Math.floor(Math.log2(v||1)/10)))
       return (v/1024**i).toLocaleString(undefined,{maximumFractionDigits:2})+' '+units[i]
     }
-    if(group==='system' && k==='uptime')return uptime(v)
-    if(group==='system' && k==='boot_time')return new Date(v*1000).toLocaleString()
     if(group==='temperatures')return v.toLocaleString(undefined,{maximumFractionDigits:1})+' °C'
     if(group==='load_avg')return v.toFixed(2)
     return null
@@ -145,7 +140,7 @@ const instrumentViews = (() => {
             if(k===compare && Number.isFinite(v) && v>=0 && max>0)td.append(makeMeter(label(k),v,isPercent(k)?Math.max(100,max):max))
           }else{
             const d=el('details');d.append(el('summary',Object.keys(v).length+' fields'))
-            d.ontoggle=()=>{if(d.open && d.children.length===1)d.append(tree(v))}
+            d.ontoggle=()=>{if(d.open && d.children.length===1)d.append(tree(v,k))}
             td.append(d)
           }
         })
@@ -199,12 +194,7 @@ const instrumentViews = (() => {
   }
   function traffic(rows){
     const bins=Array(16).fill(0)
-    const times=[]
-    for(const row of rows){
-      const ts=row.timestamp
-      if(typeof ts==='number' && Number.isFinite(ts))times.push(ts>1e12?ts:ts*1000)
-      else if(typeof ts==='string' && /^\d{4}-\d\d-/.test(ts) && Number.isFinite(Date.parse(ts)))times.push(Date.parse(ts))
-    }
+    const times=rows.map(row=>stationClock.milliseconds(row.timestamp)).filter(ms=>ms!==null)
     if(times.length<2)return null
     const lo=times.reduce((a,b)=>Math.min(a,b)),hi=times.reduce((a,b)=>Math.max(a,b))
     if(lo===hi || !Number.isFinite(new Date(hi).getTime()))return null
@@ -217,7 +207,7 @@ const instrumentViews = (() => {
       bar.title=time(start)+' – '+time(end)+': '+count+' records';bar.setAttribute('aria-label',bar.title)
       bars.append(bar)
     }
-    chart.append(el('figcaption','Packet records over time'),bars,el('small',new Date(lo).toLocaleString()+' – '+new Date(hi).toLocaleString()))
+    chart.append(el('figcaption','Packet records over time'),bars,el('small',stationClock.full(lo)+' – '+stationClock.full(hi)))
     return chart
   }
   function recordChart(rows,ctx){
@@ -283,7 +273,7 @@ const instrumentViews = (() => {
       }
       return paged(value,ctx,path,16,slice=>{
         const list=el('ul',null,'value-list')
-        slice.forEach(v=>{const li=el('li');li.append(scalar(v)?showValue('',v):tree(v));list.append(li)})
+        slice.forEach(v=>{const li=el('li');li.append(scalar(v)?showValue(path.at(-1)||'',v):tree(v,path.at(-1)));list.append(li)})
         return list
       })
     }
