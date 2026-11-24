@@ -2,12 +2,21 @@ import {openInventory, InventoryError} from './inventory.mjs'
 import {fileURLToPath} from 'node:url'
 import http from 'node:http'
 import {readFile} from 'node:fs/promises'
+import {isIP} from 'node:net'
 import {pages, allowed, unwrap} from './catalog.mjs'
 
 const root = new URL('./', import.meta.url)
 const config = JSON.parse(await readFile(process.env.OPENHOP_CONFIG || new URL('config/repeaters.json',root),'utf8'))
 if (!Array.isArray(config)) throw Error('repeaters.json must contain an array')
 const inventory = await openInventory(config, process.env.OPENHOP_DATA || fileURLToPath(new URL('data/',root)))
+// Browsers always send the name they used, so refusing unknown names blocks DNS rebinding.
+const hostnames=new Set((process.env.RELAY_DESK_HOSTNAMES||'').split(',').map(h=>h.trim().toLowerCase()).filter(Boolean))
+function trustedHost(host) {
+  if(host===undefined) return true
+  let name
+  try {name=new URL('http://'+host).hostname} catch {return false}
+  return name==='localhost' || isIP(name.replace(/^\[(.*)\]$/,'$1'))!==0 || hostnames.has(name)
+}
 function fleet() {
   return {nodes:inventory.nodes().map(({id,name})=>({id,name})),pages}
 }
@@ -86,10 +95,11 @@ function reading(node,path) {
 const staticFiles={'/':['index.html','text/html'],'/visuals.js':['visuals.js','text/javascript'],'/app.js':['app.js','text/javascript'],'/style.css':['style.css','text/css']}
 export async function handleRequest(req,res){
   const send=(status,content,mime='application/json')=>{
-    res.writeHead(status,{'Content-Type':mime+'; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; frame-src https://www.openstreetmap.org"})
+    res.writeHead(status,{'Content-Type':mime+'; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; frame-src https://www.openstreetmap.org"})
     res.end(mime==='application/json'?JSON.stringify(content):content)
   }
   try {
+    if(!trustedHost(req.headers?.host)) return send(403,{error:'Unrecognized host name. Add it to RELAY_DESK_HOSTNAMES or open the dashboard by IP address.'})
     const url=new URL(req.url,'http://localhost')
     if((req.method==='POST' && url.pathname==='/api/repeaters') ||
       (req.method==='DELETE' && /^\/api\/repeaters\/[a-zA-Z0-9-]+$/.test(url.pathname))) {
@@ -114,4 +124,6 @@ export async function handleRequest(req,res){
 if(import.meta.main){
   const server=http.createServer(handleRequest)
   server.listen(Number(process.env.PORT || 8080),process.env.HOST || '127.0.0.1',()=>console.log('Listening on port '+server.address().port))
+  // Node ignores SIGTERM by default when it runs as PID 1 in a container.
+  for(const signal of ['SIGTERM','SIGINT']) process.once(signal,()=>{server.close(()=>process.exit(0));server.closeAllConnections()})
 }

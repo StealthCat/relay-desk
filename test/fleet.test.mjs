@@ -51,3 +51,22 @@ test('a fresh installation has no stations',async t=>{
   const {openInventory}=await import('../inventory.mjs')
   assert.deepEqual((await openInventory([],dir)).nodes(),[])
 })
+
+test('a partial state file keeps usable entries instead of failing every request',async t=>{
+  const dir=await mkdtemp(join(tmpdir(),'relay-partial-'))
+  t.after(()=>rm(dir,{recursive:true,force:true}))
+  const {openInventory}=await import('../inventory.mjs')
+  await writeFile(join(dir,'fleet.json'),'{}')
+  assert.deepEqual((await openInventory([],dir)).nodes(),[])
+  await writeFile(join(dir,'fleet.json'),JSON.stringify({added:[{id:'a',base:'http://a.example'},null,{name:'no id'}]}))
+  const inventory=await openInventory([{url:'http://seed.example'}],dir)
+  assert.deepEqual(inventory.nodes().map(n=>[n.id,n.name]),[['1','seed.example'],['a','http://a.example']])
+  await inventory.remove('1')
+  assert.deepEqual(inventory.nodes().map(n=>n.id),['a'])
+})
+
+test('an invalid configured URL names the entry',async()=>{
+  const {openInventory}=await import('../inventory.mjs')
+  await assert.rejects(openInventory([{url:'http://ok.example'},{url:'not a url'}],tmpdir()),/repeater 2 .*HTTP or HTTPS/)
+  await assert.rejects(openInventory([null],tmpdir()),/repeater 1/)
+})
