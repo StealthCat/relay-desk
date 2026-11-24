@@ -22,7 +22,7 @@ test('dashboard routes against a simulated two-repeater API',async t=>{
     if(url.endsWith('hardware_stats'))return Response.json({success:false})
     if(url.endsWith('config_export?include_secrets=false'))return Response.json({data:{config:{nested:{admin_password:'abc'}}}})
     assert.equal(url,'https://a.example/base/api/stats')
-    return Response.json({packets_received:0,sensors:{voltage:0},identity_key:'sample-private'})
+    return Response.json({rx_count:0,sent_flood_count:6,sent_direct_count:2,sensors:{voltage:0},identity_key:'sample-private'})
   })
   async function request(url,method='GET'){
     let status,body
@@ -34,7 +34,7 @@ test('dashboard routes against a simulated two-repeater API',async t=>{
   assert.equal(JSON.parse(fleet.body).nodes.length,2);assert.ok(!fleet.body.includes('sample-token'))
   for(const asset of ['/','/app.js','/style.css','/health'])assert.equal((await request(asset)).status,200)
   const [stats]=await Promise.all([get('1','stats'),get('1','stats')])
-  assert.equal(calls,1);assert.equal(stats.history[0].rx,0);assert.equal(stats.value.identity_key,'[redacted]')
+  assert.equal(calls,1);assert.equal(stats.history[0].rx,0);assert.equal(stats.history[0].tx,8);assert.equal(stats.value.identity_key,'[redacted]')
   assert.equal(stats.value.sensors.voltage,0);assert.equal((await get('2','stats')).error,'HTTP 401')
   assert.equal((await get('1','plugins/')).error,'HTTP 503')
   assert.equal((await get('1','gps')).error,'Invalid JSON response')

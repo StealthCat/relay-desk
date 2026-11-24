@@ -77,9 +77,9 @@ function counterDisplay(value){
 function overview(r){
   const s=unpack(r.value)||{}, m=el('div',null,'metrics')
   for(const [label,display] of [
-    ['Uptime',el('strong',uptime(s.uptime_secs))],
-    ['Packets received',counterDisplay(s.packets_received)],
-    ['Packets sent',counterDisplay(s.packets_sent)],
+    ['Uptime',el('strong',uptime(s.uptime_secs??s.uptime_seconds))],
+    ['Packets received',counterDisplay(r.history?.at(-1)?.rx??s.packets_received??s.rx_count)],
+    ['Packets sent',counterDisplay(r.history?.at(-1)?.tx??s.packets_sent)],
     ['Radio',el('strong',s.radio_type??'—')]
   ]){
     const n=el('div',null,'metric')
@@ -87,9 +87,23 @@ function overview(r){
     m.append(n)
   }
   const grid=el('div',null,'two'),identity=panel('Repeater identity')
-  identity.append(row('Site',s.site_name),row('Repeater version',s.version),row('Core version',s.core_version))
+  identity.append(row('Site',s.site_name?.trim() || s.config?.node_name || node.name),row('Repeater version',s.version),row('Core version',s.core_version))
   grid.append(activity(r.history||[]),identity)
-  return [m,grid]
+  const panels=[m,grid]
+  const signals=Object.fromEntries(['radio_status','noise_floor_dbm','crc_error_count','forwarded_count','dropped_count','utilization_percent'].filter(k=>s[k]!=null).map(k=>[k,s[k]]))
+  if(Object.keys(signals).length)panels.push(instrumentViews.render('stats',signals,node.id,r.time,'Radio & traffic'))
+  if(Array.isArray(s.recent_packets) && s.recent_packets.length){
+    const latest=s.recent_packets.filter(p=>p && Number.isFinite(p.timestamp))
+      .sort((a,b)=>b.timestamp-a.timestamp).slice(0,8)
+      .map(p=>({
+        time:new Date(p.timestamp*(p.timestamp>1e12?1:1000)).toLocaleString(),
+        direction:p.transmitted===true?'TX':p.transmitted===false?'RX':null,
+        rssi_dbm:p.rssi??null,snr_db:p.snr??null,bytes:p.length??null,
+        drop_reason:p.drop_reason||null
+      }))
+    if(latest.length)panels.push(instrumentViews.render('stats',latest,node.id,r.time,'Latest packets'))
+  }
+  return panels
 }
 function render(paths,results){
   const c=$('content'),opened=new Set([...c.querySelectorAll('details[open]')].map(d=>d.firstChild.textContent))
@@ -104,7 +118,7 @@ function render(paths,results){
       const gps=unpack(results[0].value)??s.gps,pos=gps?.position
       const usable=Number.isFinite(pos?.latitude) && Math.abs(pos.latitude)<=90 &&
         Number.isFinite(pos?.longitude) && Math.abs(pos.longitude)<=180
-      showMap(usable ? pos : null,gps?.status)
+      showMap(usable ? pos : null,gps?.status,gps?.position_meta?.source)
       if(usable){
         const card=panel('Reported position');card.append(row('Latitude',pos.latitude),row('Longitude',pos.longitude),row('Fix valid',gps.status?.fix_valid),row('Stale',gps.status?.stale))
         const a=el('a','View coordinates on OpenStreetMap ↗');a.href='https://www.openstreetmap.org/?mlat='+pos.latitude+'&mlon='+pos.longitude;a.target='_blank';a.rel='noreferrer';card.append(a);c.append(card)
@@ -112,7 +126,7 @@ function render(paths,results){
     }
     paths.forEach((p,i)=>{
       const r=results[i]
-      if(!r.ok)return
+      if(!r.ok || (page==='Overview' && p==='stats'))return
       if(p==='stats' && Object.hasOwn(subsets,page)){
         if(keys.length)c.append(instrumentViews.render(p,Object.fromEntries(keys.map(k=>[k,s[k]])),node.id,r.time,'Reported '+page.toLowerCase()))
         return
@@ -126,11 +140,11 @@ function render(paths,results){
   }
   c.querySelectorAll('details').forEach(d=>{if(opened.has(d.firstChild.textContent))d.open=true})
 }
-function showMap(pos,status){
+function showMap(pos,status,source){
   const screen=$('map-screen')
   $('map-panel').hidden=false
   const stale=status?.stale===true, invalid=status?.fix_valid===false
-  $('map-status').textContent=!pos?'No coordinates reported.':stale?'Last reported position · stale GPS reading':invalid?'Reported position · no valid GPS fix':'Reported repeater position'
+  $('map-status').textContent=!pos?'No coordinates reported.':source==='manual_config'?'Configured station location · manual coordinates':stale?'Last reported position · stale GPS reading':invalid?'Reported position · no valid GPS fix':'Reported repeater position'
   if(!pos){screen.replaceChildren();return}
   const {latitude:lat,longitude:lon}=pos
   const span=.022/Math.max(.1,Math.cos(lat*Math.PI/180))
