@@ -46,7 +46,8 @@ async function fetchReading(node,path) {
   const cancel = new AbortController()
   const timer = setTimeout(()=>cancel.abort(),5500)
   try {
-    const response = await fetch(node.base+'/api/'+path,{headers:node.key ? {'X-API-Key':node.key} : {}, redirect:'manual',signal:cancel.signal})
+    const upstreamPath=path==='airtime_data'?'airtime_data?limit=512':path
+    const response = await fetch(node.base+'/api/'+upstreamPath,{headers:node.key ? {'X-API-Key':node.key} : {}, redirect:'manual',signal:cancel.signal})
     if (!response.ok) return {ok:false,error:'HTTP '+response.status}
     const chunks=[]
     let size=0

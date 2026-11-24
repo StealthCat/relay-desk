@@ -3,7 +3,7 @@ const instrumentViews = (() => {
   const titles = {
     stats:'Repeater statistics', hardware_stats:'Hardware utilization', hardware_processes:'Processes',
     site_info:'Host information', gps:'GPS receiver', noise_floor_stats:'Noise floor',
-    lbt_diagnostics:'Listen before talk', crc_error_count:'CRC errors', airtime_data:'Airtime records',
+    lbt_diagnostics:'Listen before talk', crc_error_count:'CRC errors', airtime_data:'Airtime · latest 512 records',
     mqtt_status:'MQTT connections', neighbor_links:'Neighbour links', sensors_config:'Sensor configuration',
     sensors_types:'Supported sensors', route_stats:'Routes', neighbor_scopes:'Neighbour scopes',
     packet_type_stats:'Packet types', packet_stats:'Packet statistics', 'plugins/':'Installed plugins',
@@ -243,6 +243,23 @@ const instrumentViews = (() => {
     if(scalar(value))return showValue(path.at(-1)||'value',value)
     if(!Object.keys(value).length)return el('p','No entries reported.','muted')
     if(Array.isArray(value)){
+      if(ctx.source==='stats' && path.includes('sensors') && path.at(-1)==='readings' &&
+        value.every(record=>isRecord(record) && typeof record.name==='string' && isRecord(record.data))){
+        return paged(value,ctx,path,6,slice=>{
+          const bank=el('div')
+          for(const sensor of slice){
+            const item=el('section',null,'sensor-bank')
+            item.append(el('h3',sensor.name))
+            const {name,data,...metadata}=sensor
+            const sensorPath=[...path,name]
+            item.append(contents(metadata,ctx,[...sensorPath,'status']))
+            const sensorContext=sensor.type==='hardware_stats'?{...ctx,source:'hardware_stats'}:ctx
+            item.append(contents(data,sensorContext,sensorPath))
+            bank.append(item)
+          }
+          return bank
+        })
+      }
       if(value.every(isRecord)){
         const records=table(value,ctx,path)
         const graph=recordChart(value,ctx)
