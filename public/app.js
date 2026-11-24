@@ -26,7 +26,7 @@ function tree(value){
 function resource(title,r,open=false){
   const d=el('details',null,'resource'),s=el('summary',title)
   s.append(el('small',r.ok?'Available':r.error,r.ok?'':'error'));d.append(s)
-  if(r.ok)d.append(tree(r.value));else d.append(el('p',r.error==='HTTP 404'?'This route is unavailable on this repeater.':r.error,'error'))
+  if(r.ok)d.addEventListener('toggle',()=>{if(d.open && d.children.length===1)d.append(tree(r.value))});else d.append(el('p',r.error==='HTTP 404'?'This route is unavailable on this repeater.':r.error,'error'))
   d.open=open;return d
 }
 function activity(samples){
@@ -89,17 +89,17 @@ function overview(r){
   const grid=el('div',null,'two'),identity=panel('Repeater identity')
   identity.append(row('Site',s.site_name),row('Repeater version',s.version),row('Core version',s.core_version))
   grid.append(activity(r.history||[]),identity)
-  return [m,grid,resource('All repeater statistics',r)]
+  return [m,grid]
 }
 function render(paths,results){
   const c=$('content'),opened=new Set([...c.querySelectorAll('details[open]')].map(d=>d.firstChild.textContent))
   c.replaceChildren()
   const stats=results[paths.indexOf('stats')],s=unpack(stats?.value)||{}
   if(page==='Overview' && stats?.ok)c.append(...overview(stats))
-  else {
+  {
     const subsets={'Telemetry & sensors':['sensors'],'GPS & location':['gps'],'Radio & RF':['radio','radio_type','radios','radio_stack','fabric','sx1262','modem_tcp','modem_usb','ch341','kiss'],'Network & connectivity':['network','connectivity','fabric'],'System & hardware':['version','core_version','uptime_secs','radio_stack']}
     const keys=(subsets[page]||[]).filter(k=>Object.hasOwn(s,k))
-    if(keys.length)c.append(resource('Reported '+page.toLowerCase(),{ok:true,value:Object.fromEntries(keys.map(k=>[k,s[k]]))},true))
+
     if(page==='GPS & location'){
       const gps=unpack(results[0].value)??s.gps,pos=gps?.position
       const usable=Number.isFinite(pos?.latitude) && Math.abs(pos.latitude)<=90 &&
@@ -110,7 +110,19 @@ function render(paths,results){
         const a=el('a','View coordinates on OpenStreetMap ↗');a.href='https://www.openstreetmap.org/?mlat='+pos.latitude+'&mlon='+pos.longitude;a.target='_blank';a.rel='noreferrer';card.append(a);c.append(card)
       }
     }
-    paths.forEach((p,i)=>c.append(resource('/api/'+p,results[i],i===0 && !keys.length)))
+    paths.forEach((p,i)=>{
+      const r=results[i]
+      if(!r.ok)return
+      if(p==='stats' && Object.hasOwn(subsets,page)){
+        if(keys.length)c.append(instrumentViews.render(p,Object.fromEntries(keys.map(k=>[k,s[k]])),node.id,r.time,'Reported '+page.toLowerCase()))
+        return
+      }
+      c.append(instrumentViews.render(p,unpack(r.value),node.id,r.time))
+    })
+    const raw=el('section',null,'raw-sources')
+    raw.append(el('h2','API responses'))
+    paths.forEach((p,i)=>raw.append(resource('/api/'+p,results[i])))
+    c.append(raw)
   }
   c.querySelectorAll('details').forEach(d=>{if(opened.has(d.firstChild.textContent))d.open=true})
 }
