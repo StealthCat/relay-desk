@@ -39,12 +39,26 @@ function activity(samples){
   const latest=points.at(-1)
   p.append(row('Received / min',latest.rx.toFixed(1)),row('Sent / min',latest.tx.toFixed(1)))
   if(points.length>1){
-    const canvas=el('canvas');canvas.width=900;canvas.height=210;canvas.setAttribute('aria-label','Received and sent packets per minute over recent samples')
-    p.append(canvas);const c=canvas.getContext('2d'),max=Math.max(1,...points.flatMap(v=>[v.rx,v.tx]))
-    for(const [key,color] of [['rx','#83ebd2'],['tx','#ffb05c']]){
-      c.beginPath();points.forEach((v,i)=>{const x=4+892*(v.time-points[0].time)/(latest.time-points[0].time),y=200-190*v[key]/max;i?c.lineTo(x,y):c.moveTo(x,y)});c.strokeStyle=color;c.lineWidth=3;c.stroke()
+    const max=Math.max(1,...points.flatMap(v=>[v.rx,v.tx]))
+    const scope=el('div',null,'traffic-scope')
+    const duration=latest.time-points[0].time
+    for(const key of ['rx','tx']){
+      const lane=el('figure',null,'scope-lane '+key)
+      lane.append(el('figcaption',key.toUpperCase()))
+      const svg=document.createElementNS('http://www.w3.org/2000/svg','svg')
+      svg.setAttribute('viewBox','0 0 320 40')
+      svg.setAttribute('preserveAspectRatio','none')
+      svg.setAttribute('role','img')
+      svg.setAttribute('aria-label',key.toUpperCase()+' packets per minute, latest '+latest[key].toFixed(1))
+      const line=document.createElementNS(svg.namespaceURI,'polyline')
+      line.setAttribute('points',points.map(v=>{
+        const x=2+316*(v.time-points[0].time)/duration
+        return x+','+(36-32*v[key]/max)
+      }).join(' '))
+      svg.append(line);lane.append(svg);scope.append(lane)
     }
-    p.append(el('small','Mint RX · Amber TX · '+time(points[0].time)+' – '+time(latest.time)))
+    scope.append(el('small','Shared scale 0–'+max.toLocaleString(undefined,{maximumFractionDigits:1})+' packets/min · '+time(points[0].time)+' – '+time(latest.time)))
+    p.append(scope)
   }
   return p
 }
@@ -109,9 +123,16 @@ function render(paths,results){
   const c=$('content'),opened=new Set([...c.querySelectorAll('details[open]')].map(d=>d.firstChild.textContent))
   c.replaceChildren()
   const stats=results[paths.indexOf('stats')],s=unpack(stats?.value)||{}
+  const failures=paths.map((path,i)=>({path,result:results[i]})).filter(entry=>!entry.result.ok)
+  if(failures.length){
+    const warning=panel('Unavailable sources')
+    warning.classList.add('source-warning')
+    for(const {path,result} of failures)warning.append(row('/api/'+path,result.error))
+    c.append(warning)
+  }
   if(page==='Overview' && stats?.ok)c.append(...overview(stats))
   {
-    const subsets={'Telemetry & sensors':['sensors'],'GPS & location':['gps'],'Radio & RF':['radio','radio_type','radios','radio_stack','fabric','sx1262','modem_tcp','modem_usb','ch341','kiss'],'Network & connectivity':['network','connectivity','fabric'],'System & hardware':['version','core_version','uptime_secs','radio_stack']}
+    const subsets={'Combined diagnostics':['radio_status','rx_count','packets_received','packets_sent','forwarded_count','dropped_count','crc_error_count','noise_floor_dbm','utilization_percent','uptime_seconds','uptime_secs'],'Telemetry & sensors':['sensors'],'GPS & location':['gps'],'Radio & RF':['radio','radio_type','radios','radio_stack','fabric','sx1262','modem_tcp','modem_usb','ch341','kiss'],'Network & connectivity':['network','connectivity','fabric'],'System & hardware':['version','core_version','uptime_secs','radio_stack']}
     const keys=(subsets[page]||[]).filter(k=>Object.hasOwn(s,k))
 
     if(page==='GPS & location'){
@@ -127,6 +148,7 @@ function render(paths,results){
     paths.forEach((p,i)=>{
       const r=results[i]
       if(!r.ok || (page==='Overview' && p==='stats'))return
+      if(p==='stats' && page==='GPS & location' && results[0].ok && unpack(results[0].value)?.position)return
       if(p==='stats' && Object.hasOwn(subsets,page)){
         if(keys.length)c.append(instrumentViews.render(p,Object.fromEntries(keys.map(k=>[k,s[k]])),node.id,r.time,'Reported '+page.toLowerCase()))
         return
