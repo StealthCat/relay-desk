@@ -1,0 +1,6 @@
+*
+!server.mjs
+!catalog.mjs
+!sample.mjs
+!public/
+!public/**
