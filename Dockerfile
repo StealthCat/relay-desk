@@ -1,4 +1,4 @@
-FROM node:24-alpine
+FROM node:26-alpine
 WORKDIR /app
 COPY --chown=node:node server.mjs inventory.mjs catalog.mjs ./
 COPY --chown=node:node public ./public
