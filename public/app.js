@@ -119,6 +119,18 @@ function overview(r){
   }
   return panels
 }
+function updatePanelMenu(){
+  const headings=[...document.querySelectorAll('#map-panel:not([hidden]) h2, #content h2')]
+  const tools=$('panel-tools'),menu=$('panel-jump')
+  tools.hidden=page==='Overview' || headings.length<3
+  if(tools.hidden)return
+  const names=headings.map(h=>h.textContent)
+  headings.forEach((h,i)=>{h.id='instrument-'+i;h.tabIndex=-1})
+  if([...menu.options].slice(1).map(o=>o.textContent).join('\n')!==names.join('\n')){
+    menu.length=1
+    names.forEach((name,i)=>menu.add(new Option(name,'instrument-'+i)))
+  }
+}
 function render(paths,results){
   const c=$('content'),opened=new Set([...c.querySelectorAll('details[open]')].map(d=>d.firstChild.textContent))
   c.replaceChildren()
@@ -183,6 +195,7 @@ async function refresh(reset=false){
   if(busy&&!reset)return
   const id=++epoch;busy=true
   if(reset)$('content').replaceChildren()
+  delete $('state').dataset.health
   $('state').textContent='Reading '+node.name+'…';$('refresh').disabled=true
   const paths=fleet.pages[page]
   try{
@@ -191,7 +204,9 @@ async function refresh(reset=false){
     }))
     if(id!==epoch)return
     render(paths,results)
+    updatePanelMenu()
     const ok=results.filter(r=>r.ok).length
+    $('state').dataset.health=ok===paths.length?'ready':'partial'
     $('state').textContent=ok+' of '+paths.length+' sources available · Checked '+time(Math.min(...results.map(r=>r.time)))+(results.some(r=>/HTTP 40[13]/.test(r.error))?' · Check this repeater’s API token and permissions.':'')
     if(page==='Overview' && fleet.nodes.length>1) await showFleet(id,results[0])
   }catch{if(id===epoch)$('state').textContent='Dashboard connection lost. Displayed readings may be stale.'}
@@ -214,6 +229,8 @@ async function showFleet(id,selected){
   }
 }
 function select(){
+  $('panel-tools').hidden=true
+  delete $('state').dataset.health
   $('map-panel').hidden=true
   $('map-screen').replaceChildren()
   node=fleet.nodes.find(n=>n.id===$('node').value)
@@ -287,6 +304,11 @@ async function init(){
       changeFleet('POST','/api/repeaters',{name:$('repeater-name').value,url:$('repeater-url').value,apiKey:$('repeater-token').value})
     }
     for(const name of Object.keys(fleet.pages)){const b=el('button',name);b.onclick=()=>{page=name;select()};$('nav').append(b)}
+    $('panel-jump').onchange=e=>{
+      const heading=document.getElementById(e.target.value)
+      e.target.selectedIndex=0
+      if(heading){heading.focus({preventScroll:true});heading.scrollIntoView({block:'start'})}
+    }
     $('node').onchange=select;$('refresh').onclick=()=>refresh();setFleet(fleet)
     setInterval(()=>{if(!document.hidden)refresh()},30000)
   }catch{$('state').textContent='Could not load repeater inventory. Reload to retry.'}

@@ -210,3 +210,20 @@ form button { margin-top: 8px }
 @media(min-width:721px) and (min-height:600px){
   aside { position:sticky; top:0; height:100vh; align-self:start; overflow:auto }
 }
+
+#state[data-health]::before {
+  content:""; display:inline-block; width:7px; height:7px; border-radius:50%;
+  margin:0 9px 1px 0; background:var(--green); box-shadow:0 0 5px #80ba8e80;
+}
+#state[data-health=partial]::before { background:var(--amber); box-shadow:0 0 5px #d79d5380 }
+#panel-tools {
+  position:sticky; top:0; z-index:2; display:flex; align-items:center; gap:12px;
+  margin:0 0 16px; padding:7px 12px; border:1px solid var(--edge); border-radius:5px;
+  background:var(--ribbed); box-shadow:var(--rim);
+}
+#panel-tools label { flex:none; color:var(--label); font:700 11px var(--legend); text-transform:uppercase; letter-spacing:.12em }
+#panel-jump { margin:0; width:min(100%,330px); min-width:0; padding:6px 8px }
+main h2[tabindex] { scroll-margin-top:64px }
+.direction-key { display:inline-block; border:1px solid currentColor; border-radius:3px; padding:1px 5px; font:700 12px var(--mono) }
+.direction-key.rx { color:#92d7ba; background:#15241d }
+.direction-key.tx { color:#ffb270; background:#291e17 }

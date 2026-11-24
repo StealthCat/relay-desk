@@ -2,6 +2,16 @@
 
 A read-only, self-hosted dashboard for one or more openHop **Repeater** web APIs. It runs on Node.js 24 with no npm dependencies, external fonts, JavaScript CDNs or database.
 
+## Console preview
+
+The screenshots use a fictional repeater and synthetic readings.
+
+![Station overview showing packet counters, separate RX and TX traces, and radio status](docs/screenshots/overview.png)
+
+| System and hardware | First launch |
+| --- | --- |
+| [![Hardware utilization and trend displays](docs/screenshots/hardware.png)](docs/screenshots/hardware.png) | [![Empty fleet with the Manage repeaters action](docs/screenshots/first-launch.png)](docs/screenshots/first-launch.png) |
+
 ## Start with Docker
 
 From the project directory, create your local settings file once. If you already have a `.env` with repeater tokens, add the settings from `.env.example` to that file.
