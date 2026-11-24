@@ -14,7 +14,8 @@ test('dashboard routes against a simulated two-repeater API',async t=>{
   let calls=0
   t.mock.method(globalThis,'fetch',async(url,options)=>{
     calls++
-    if(url.startsWith('http://b.example'))return new Response(null,{status:401})
+    const parsedUrl = new URL(String(url))
+    if(parsedUrl.origin==='http://b.example')return new Response(null,{status:401})
     assert.equal(options.headers['X-API-Key'],'sample-token')
     assert.equal(options.redirect,'manual')
     if(url.endsWith('/airtime_data?limit=512'))return Response.json({data:[]})
