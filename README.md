@@ -12,7 +12,15 @@ docker compose up -d --build
 
 Open **http://localhost:8080**. The shipped empty inventory displays a labeled sample station. Requires Docker with Compose 2.24 or newer for the optional environment file.
 
-## Connect your repeaters
+## Manage repeaters in the browser
+
+Choose **Manage repeaters**, enter a display name, the repeater base URL reachable from the container, and an optional API token. Select **Add repeater** to switch to it immediately. **Remove** asks for confirmation and removes the station from this dashboard. Removing the last station brings back the labeled sample.
+
+Compose stores these changes in the named `fleet-data` volume. UI-entered tokens are stored server-side in a restricted-permission JSON file in that volume. Protect volume backups. Anyone with access to the dashboard can manage its fleet. The default port binding is loopback. If using an authenticated reverse proxy, preserve the original Host header. Native installs can set `OPENHOP_DATA` to a writable directory (default `./data` beside the server).
+
+## Configure repeaters with a file
+
+Existing file-based configurations and environment-variable tokens continue to work. Removing a file-configured address from the UI hides it across restarts. The source configuration is preserved.
 
 1. Create an API token in each repeater's authenticated dashboard. Use a token authorized to read the data you want.
 2. Replace the empty array in `config/repeaters.json` with your own nodes. Use the base URL reachable **from the container**. The app adds `/api/`. A reverse proxy path prefix is supported. Inside Docker, localhost points to the dashboard container.
@@ -45,7 +53,7 @@ Select a repeater and a section. Overview checks every configured repeater's sta
 
 | Section | Available information |
 | --- | --- |
-| GPS & location | Receiver state, fix validity, stale flag, coordinates, altitude, satellites and detailed diagnostics. Map links open only when clicked. |
+| GPS & location | Receiver state, fix validity, stale flag, coordinates, altitude, satellites and detailed diagnostics. The GPS page embeds an interactive OpenStreetMap with a position marker and retains the numeric readings and external map link. Opening this page sends available coordinates to OpenStreetMap. Map tiles require internet access. |
 | System & hardware | Host information, hardware utilization, process list, software versions |
 | Radio & RF | Radio backend and fabric, radio configuration, noise floor, airtime, CRC and listen-before-talk diagnostics |
 | Network & connectivity | Site information, MQTT status, observed links and network fields reported in stats |
@@ -57,7 +65,7 @@ Select a repeater and a section. Overview checks every configured repeater's sta
 
 Expand API responses to inspect nested fields, arrays, and firmware-specific values. An em dash denotes a missing value. The source count is the number of successful API reads, not a radio health score. A 401/403 indicates a credential or permission issue. A 404 means the route is unavailable at that address. A plugin manager can return 503 while the repeater is otherwise healthy.
 
-The visible page refreshes every 30 seconds. Identical reads share a 15-second cache across clients. The server keeps up to 120 recent stats samples per repeater in memory. There is no background archive. Dashboard requests use GET only and the upstream resource list is fixed in `catalog.mjs`. Each response has a 5.5-second deadline and 2 MiB maximum size. The dashboard also masks common credential fields. Treat telemetry, configuration and GPS coordinates as private.
+The visible page refreshes every 30 seconds. Identical reads share a 15-second cache across clients. The server keeps up to 120 recent stats samples per repeater in memory. There is no background archive. Requests to the repeater use GET only and the upstream resource list is fixed in `catalog.mjs`. Each response has a 5.5-second deadline and 2 MiB maximum size. The dashboard also masks common credential fields. Treat telemetry, configuration and GPS coordinates as private.
 
 ## Local development
 

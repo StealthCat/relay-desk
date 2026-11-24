@@ -1,3 +1,5 @@
+import {openInventory, InventoryError} from './inventory.mjs'
+import {fileURLToPath} from 'node:url'
 import http from 'node:http'
 import {readFile} from 'node:fs/promises'
 import {pages, allowed, unwrap} from './catalog.mjs'
@@ -6,13 +8,36 @@ import {demo} from './sample.mjs'
 const root = new URL('./', import.meta.url)
 const config = JSON.parse(await readFile(process.env.OPENHOP_CONFIG || new URL('config/repeaters.json',root),'utf8'))
 if (!Array.isArray(config)) throw Error('repeaters.json must contain an array')
-const nodes = config.map((item,i) => {
-  const url = new URL(item.url)
-  if (!['http:','https:'].includes(url.protocol) || url.username || url.password || url.hash || url.search) throw Error('Invalid base URL for repeater '+(i+1))
-  if (item.apiKeyEnv && !process.env[item.apiKeyEnv]) throw Error('Missing API key environment variable for repeater '+(i+1))
-  return {id:String(i+1),name:item.name || url.hostname,base:url.href.replace(/\/+$/,''),key:item.apiKeyEnv ? process.env[item.apiKeyEnv] : item.apiKey}
-})
-if (!nodes.length) nodes.push({id:'demo', name:'Piedmont Ridge',demo:true})
+const inventory = await openInventory(config, process.env.OPENHOP_DATA || fileURLToPath(new URL('data/',root)))
+function fleet() {
+  return {nodes:inventory.nodes().map(({id,name,demo})=>({id,name,demo:!!demo})),pages}
+}
+async function mutation(req,url) {
+  const headers=req.headers || {}
+  const origin=headers.origin
+  if(headers['x-relay-desk']!=='fleet' || headers['sec-fetch-site']==='cross-site' ||
+    (origin && !['https://'+headers.host,'http://'+headers.host].includes(origin)))
+    throw new InventoryError(403,'Use the fleet controls on this dashboard.')
+  if(req.method==='POST') {
+    if(headers['content-type']?.split(';')[0]!=='application/json') throw new InventoryError(415,'JSON required.')
+    const chunks=[]
+    let size=0
+    for await(const chunk of req) {
+      size+=chunk.length
+      if(size>16384) throw new InventoryError(413,'Request too large.')
+      chunks.push(chunk)
+    }
+    let input
+    try {input=JSON.parse(Buffer.concat(chunks).toString())} catch {throw new InventoryError(400,'Invalid JSON.')}
+    const selected=await inventory.add(input)
+    return {...fleet(),selected}
+  }
+  const id=url.pathname.split('/').pop()
+  await inventory.remove(id)
+  histories.delete(id)
+  for(const key of cache.keys()) if(key.startsWith(id+'|')) cache.delete(key)
+  return fleet()
+}
 const cache = new Map(), pending = new Map(), histories = new Map()
 const limit = 2*1024*1024
 function redact(key,value) {
@@ -45,6 +70,7 @@ function reading(node,path) {
   if(pending.has(key)) return pending.get(key)
   const task=fetchReading(node,path).then(result=>{
     result.time=Date.now()
+    if(!inventory.nodes().some(n=>n.id===node.id)) return result
     cache.set(key,result)
     if(path==='stats' && result.ok) {
       const s=unwrap(result.value), history=histories.get(node.id) || []
@@ -59,26 +85,30 @@ function reading(node,path) {
 const staticFiles={'/':['index.html','text/html'],'/app.js':['app.js','text/javascript'],'/style.css':['style.css','text/css']}
 export async function handleRequest(req,res){
   const send=(status,content,mime='application/json')=>{
-    res.writeHead(status,{'Content-Type':mime+'; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"})
+    res.writeHead(status,{'Content-Type':mime+'; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; frame-src https://www.openstreetmap.org"})
     res.end(mime==='application/json'?JSON.stringify(content):content)
   }
   try {
-    if(req.method!=='GET') return send(405,{error:'GET required'})
     const url=new URL(req.url,'http://localhost')
+    if((req.method==='POST' && url.pathname==='/api/repeaters') ||
+      (req.method==='DELETE' && /^\/api\/repeaters\/[a-zA-Z0-9-]+$/.test(url.pathname))) {
+      return send(req.method==='POST'?201:200,await mutation(req,url))
+    }
+    if(req.method!=='GET') return send(405,{error:'Method unavailable'})
     if(Object.hasOwn(staticFiles,url.pathname)){
       const [file,type]=staticFiles[url.pathname]
       return send(200,await readFile(new URL('public/'+file,root)),type)
     }
     if(url.pathname==='/health') return send(200,{ok:true})
-    if(url.pathname==='/api/fleet') return send(200,{nodes:nodes.map(({id,name,demo})=>({id,name,demo:!!demo})),pages})
+    if(url.pathname==='/api/fleet') return send(200,fleet())
     if(url.pathname==='/api/reading'){
-      const node=nodes.find(n=>n.id===url.searchParams.get('node')),path=url.searchParams.get('path')
+      const node=inventory.nodes().find(n=>n.id===url.searchParams.get('node')),path=url.searchParams.get('path')
       if(!node || !allowed.has(path)) return send(404,{error:'Unknown node or resource'})
       const result=await reading(node,path)
       return send(200,{...result,history:path==='stats'?histories.get(node.id):undefined})
     }
     send(404,{error:'Not found'})
-  } catch {send(500,{error:'Dashboard request failed'})}
+  } catch(err) {if(err instanceof InventoryError)return send(err.status,{error:err.message});send(500,{error:'Dashboard request failed'})}
 }
 if(import.meta.main){
   const server=http.createServer(handleRequest)
