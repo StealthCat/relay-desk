@@ -23,6 +23,12 @@ const instrumentViews = (() => {
   const isPercent=k=>/(^|[ _])(?:percent(?:age)?|pct)(?:$|[ _])/i.test(k)
   const trackable=k=>isPercent(k)||/(temperature|temp_c|voltage|humidity|current_ma|power_mw|power_w|rssi|snr|noise_floor|speed_kmh|altitude_m|load_avg)/i.test(k)
   function showValue(key,value) {
+    if(key==='direction' && (value==='RX'||value==='TX'))return el('span',value,'direction-key '+value.toLowerCase())
+    if(isPercent(key) && Number.isFinite(value)){
+      const badge=el('span',(value>0 && value<0.01?'<0.01':value.toLocaleString(undefined,{maximumFractionDigits:2}))+'%')
+      badge.title=value+'%'
+      return badge
+    }
     if(value===null)return el('span','—','reading-null')
     if(typeof value==='boolean')return el('span',value?'Yes':'No',value?'flag on':'flag off')
     if(typeof value==='string' && /^(status|state)$/i.test(key))return el('span',value,'flag')
