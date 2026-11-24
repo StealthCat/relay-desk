@@ -3,14 +3,13 @@ import {fileURLToPath} from 'node:url'
 import http from 'node:http'
 import {readFile} from 'node:fs/promises'
 import {pages, allowed, unwrap} from './catalog.mjs'
-import {demo} from './sample.mjs'
 
 const root = new URL('./', import.meta.url)
 const config = JSON.parse(await readFile(process.env.OPENHOP_CONFIG || new URL('config/repeaters.json',root),'utf8'))
 if (!Array.isArray(config)) throw Error('repeaters.json must contain an array')
 const inventory = await openInventory(config, process.env.OPENHOP_DATA || fileURLToPath(new URL('data/',root)))
 function fleet() {
-  return {nodes:inventory.nodes().map(({id,name,demo})=>({id,name,demo:!!demo})),pages}
+  return {nodes:inventory.nodes().map(({id,name})=>({id,name})),pages}
 }
 async function mutation(req,url) {
   const headers=req.headers || {}
@@ -44,7 +43,6 @@ function redact(key,value) {
   return /password|passphrase|secret|(?:private|identity|api|transport|channel)[_-]?keys?$|token$|^psk$|^authorization$/i.test(key) ? '[redacted]' : value
 }
 async function fetchReading(node,path) {
-  if (node.demo) return {ok:true,value:demo(path)}
   const cancel = new AbortController()
   const timer = setTimeout(()=>cancel.abort(),5500)
   try {

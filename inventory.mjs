@@ -25,8 +25,7 @@ export async function openInventory(seeds, directory) {
   try { state = JSON.parse(await readFile(file, 'utf8')) }
   catch (err) { if (err.code !== 'ENOENT') throw err }
   function nodes() {
-    const active = [...configured.filter(n => !state.hidden.includes(n.base)), ...state.added]
-    return active.length ? active : [{id:'demo', name:'Piedmont Ridge', demo:true}]
+    return [...configured.filter(n => !state.hidden.includes(n.base)), ...state.added]
   }
   let tail = Promise.resolve()
   function update(change) {
@@ -62,7 +61,7 @@ export async function openInventory(seeds, directory) {
     },
     remove(id) {
       return update(next=>{
-        const node = nodes().find(n=>n.id===id && !n.demo)
+        const node = nodes().find(n=>n.id===id)
         if (!node) throw new InventoryError(404,'Repeater not found.')
         if (configured.some(n=>n.id===id)) next.hidden.push(node.base)
         else next.added = next.added.filter(n=>n.id!==id)

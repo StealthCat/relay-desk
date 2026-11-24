@@ -37,7 +37,17 @@ test('manage configured and browser-added repeaters across restarts',async t=>{
     return Response.json({uptime_secs:1})
   })
   assert.equal((await call('GET','/api/reading?node='+created.selected+'&path=stats')).data.ok,true)
-  assert.equal((await call('DELETE',api+'/'+created.selected)).data.nodes[0].demo,true)
+  assert.deepEqual((await call('DELETE',api+'/'+created.selected)).data.nodes,[])
+  ;({handleRequest}=await import('../server.mjs?emptyRestart'))
+  assert.deepEqual((await call('GET','/api/fleet')).data.nodes,[])
+  assert.equal((await call('GET','/api/reading?node=demo&path=stats')).status,404)
   assert.equal((await call('GET','/api/reading?node='+created.selected+'&path=stats')).status,404)
   assert.equal((await call('DELETE',api+'/demo')).status,404)
+})
+
+test('a fresh installation has no stations',async t=>{
+  const dir=await mkdtemp(join(tmpdir(),'relay-empty-'))
+  t.after(()=>rm(dir,{recursive:true,force:true}))
+  const {openInventory}=await import('../inventory.mjs')
+  assert.deepEqual((await openInventory([],dir)).nodes(),[])
 })

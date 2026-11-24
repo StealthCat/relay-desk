@@ -23,11 +23,11 @@ Start the service, or apply changes after a `git pull`, with:
 docker compose up -d --build
 ```
 
-Open **http://192.168.1.50:8080** for that example. With the default settings, open **http://127.0.0.1:8080**. The local `.env` is ignored by Git. The shipped empty inventory displays a labeled sample station. Requires Docker with Compose 2.24 or newer for the optional environment file.
+Open **http://192.168.1.50:8080** for that example. With the default settings, open **http://127.0.0.1:8080**. The local `.env` is ignored by Git. An empty inventory opens a blank dashboard. Choose **Manage repeaters** to add the first station. Requires Docker with Compose 2.24 or newer for the optional environment file.
 
 ## Manage repeaters in the browser
 
-Choose **Manage repeaters**, enter a display name, the repeater base URL reachable from the container, and an optional API token. Select **Add repeater** to switch to it immediately. **Remove** asks for confirmation and removes the station from this dashboard. Removing the last station brings back the labeled sample.
+Choose **Manage repeaters**, enter a display name, the repeater base URL reachable from the container, and an optional API token. Select **Add repeater** to switch to it immediately. **Remove** asks for confirmation and removes the station from this dashboard. Removing the last station clears its readings and returns to the empty dashboard.
 
 Compose stores these changes in the named `fleet-data` volume. UI-entered tokens are stored server-side in a restricted-permission JSON file in that volume. Protect volume backups. Anyone with access to the dashboard can manage its fleet. The default port binding is loopback. If using an authenticated reverse proxy, preserve the original Host header. Native installs can set `OPENHOP_DATA` to a writable directory (default `./data` beside the server).
 

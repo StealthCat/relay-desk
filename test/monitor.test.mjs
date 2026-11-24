@@ -6,12 +6,6 @@ import {once} from 'node:events'
 import {mkdtemp,writeFile,rm} from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import {pages} from '../catalog.mjs'
-import {demo} from '../sample.mjs'
-
-test('sample responses exist for every section',()=>{
-  for(const name of Object.values(pages).flat())assert.notEqual(demo(name),undefined,name)
-})
 test('fleet proxy handles per-node authentication, partial failure, caching and redaction',{skip:process.env.SKIP_LOOPBACK==='1'},async t=>{
   let reads=0
   const upstream=http.createServer((req,res)=>{

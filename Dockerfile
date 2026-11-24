@@ -1,6 +1,6 @@
 FROM node:24-alpine
 WORKDIR /app
-COPY --chown=node:node server.mjs inventory.mjs catalog.mjs sample.mjs ./
+COPY --chown=node:node server.mjs inventory.mjs catalog.mjs ./
 COPY --chown=node:node public ./public
 RUN mkdir -p data config && chown node:node data && echo '[]' > config/repeaters.json
 ENV HOST=0.0.0.0 PORT=8080

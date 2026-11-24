@@ -61,7 +61,6 @@ function overview(r){
 function render(paths,results){
   const c=$('content'),opened=new Set([...c.querySelectorAll('details[open]')].map(d=>d.firstChild.textContent))
   c.replaceChildren()
-  if(node.demo)c.append(el('p','Sample repeater · Use Manage repeaters to connect live hardware.','guide'))
   const stats=results[paths.indexOf('stats')],s=unpack(stats?.value)||{}
   if(page==='Overview' && stats?.ok)c.append(...overview(stats))
   else {
@@ -99,7 +98,7 @@ function showMap(pos,status){
   screen.replaceChildren(frame)
 }
 async function refresh(reset=false){
-  if(!fleet)return
+  if(!node)return
   if(busy&&!reset)return
   const id=++epoch;busy=true
   if(reset)$('content').replaceChildren()
@@ -136,9 +135,25 @@ async function showFleet(id,selected){
 function select(){
   $('map-panel').hidden=true
   $('map-screen').replaceChildren()
-  node=fleet.nodes.find(n=>n.id===$('node').value);$('mode').textContent=node.demo?'● SAMPLE DATA':'● CONFIGURED FLEET'
-  $('station').textContent=node.name.toUpperCase();$('title').textContent=page
-  for(const b of $('nav').children)b.setAttribute('aria-current',b.textContent===page?'page':'false')
+  node=fleet.nodes.find(n=>n.id===$('node').value)
+  const empty=!node
+  $('node').disabled=empty
+  $('refresh').hidden=empty
+  $('empty-fleet').hidden=!empty
+  $('station').textContent=node?.name || ''
+  $('title').textContent=page
+  $('mode').textContent=empty?'':fleet.nodes.length+(fleet.nodes.length===1?' repeater':' repeaters')
+  for(const button of $('nav').children){
+    button.disabled=empty
+    button.setAttribute('aria-current',button.textContent===page?'page':'false')
+  }
+  if(empty){
+    ++epoch
+    busy=false
+    $('state').textContent=''
+    $('content').replaceChildren()
+    return
+  }
   refresh(true)
 }
 function setFleet(data,selected){
@@ -148,12 +163,13 @@ function setFleet(data,selected){
     const o=el('option',n.name);o.value=n.id;$('node').append(o)
   }
   if(fleet.nodes.some(n=>n.id===selected))$('node').value=selected
+  if(!fleet.nodes.length)page='Overview'
   select()
 }
 function renderManager(){
   const list=$('managed-list')
   list.replaceChildren()
-  for(const n of fleet.nodes.filter(n=>!n.demo)){
+  for(const n of fleet.nodes){
     const item=el('div',null,'row'),remove=el('button','Remove')
     remove.type='button';remove.setAttribute('aria-label','Remove '+n.name)
     remove.onclick=()=>{if(window.confirm('Remove '+n.name+' from Relay Desk?')) changeFleet('DELETE','/api/repeaters/'+n.id)}
@@ -173,7 +189,7 @@ async function changeFleet(method,url,body){
     const data=await response.json()
     if(!response.ok)throw Error(data.error||'Could not update the fleet.')
     if(method==='POST')$('add-form').reset()
-    setFleet(data,data.selected??node.id);renderManager()
+    setFleet(data,data.selected??node?.id);renderManager()
     $('manager-status').textContent=method==='POST'?'Repeater added.':'Repeater removed.'
   }catch(err){$('manager-status').textContent=err.message}
   finally{saving=false;buttons.forEach(b=>b.disabled=false)}
@@ -182,6 +198,7 @@ async function init(){
   try{
     fleet=await (await fetch('/api/fleet')).json()
     $('manage').onclick=()=>{renderManager();$('manager-status').textContent='';$('manager').showModal()}
+    $('empty-manage').onclick=$('manage').onclick
     $('dismiss').onclick=()=>$('manager').close()
     $('manager').addEventListener('close',()=>$('repeater-token').value='')
     $('add-form').onsubmit=e=>{
