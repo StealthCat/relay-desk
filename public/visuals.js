@@ -68,9 +68,28 @@ const instrumentViews = (() => {
     figure.append(svg,el('figcaption',format(lo)+' – '+format(hi)+' · '+Math.round(span/1000)+' s'))
     return figure
   }
+  function hardwareValue(k,v,path){
+    if(!Number.isFinite(v))return null
+    const group=path.at(-1)
+    const capacity=['memory','disk'].includes(group) && ['total','available','used','free'].includes(k)
+    if(capacity || (group==='network' && ['bytes_sent','bytes_recv'].includes(k))){
+      if(v<0)return null
+      const units=['B','KiB','MiB','GiB','TiB','PiB']
+      const i=Math.min(units.length-1,Math.max(0,Math.floor(Math.log2(v||1)/10)))
+      return (v/1024**i).toLocaleString(undefined,{maximumFractionDigits:2})+' '+units[i]
+    }
+    if(group==='system' && k==='uptime')return uptime(v)
+    if(group==='system' && k==='boot_time')return new Date(v*1000).toLocaleString()
+    if(group==='temperatures')return v.toLocaleString(undefined,{maximumFractionDigits:1})+' °C'
+    if(group==='load_avg')return v.toFixed(2)
+    return null
+  }
   function tile(k,v,ctx,path) {
     const card=el('div',null,'reading'),heading=label(k)
-    card.append(el('span',heading,'reading-label'),showValue(k,v))
+    const display=ctx.source==='hardware_stats'?hardwareValue(k,v,path):null
+    const reading=display===null?showValue(k,v):el('span',display)
+    if(display!==null)reading.title=String(v)
+    card.append(el('span',heading,'reading-label'),reading)
     if(ctx.source!=='hardware_stats' && isPercent(k)&&Number.isFinite(v)&&v>=0&&v<=100)card.append(makeMeter(heading,v,100))
     if(trackable(path.concat(k).join('_')) && !ctx.configuration){
       const samples=recent(ctx,[...path,k],v)

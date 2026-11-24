@@ -72,7 +72,9 @@ function reading(node,path) {
     cache.set(key,result)
     if(path==='stats' && result.ok) {
       const s=unwrap(result.value), history=histories.get(node.id) || []
-      history.push({time:result.time,rx:s?.packets_received,tx:s?.packets_sent})
+      const splitTx=Number.isSafeInteger(s?.sent_flood_count) && Number.isSafeInteger(s?.sent_direct_count)
+        ? s.sent_flood_count+s.sent_direct_count : undefined
+      history.push({time:result.time,rx:s?.packets_received??s?.rx_count,tx:s?.packets_sent??splitTx})
       histories.set(node.id,history.slice(-120))
     }
     return result
