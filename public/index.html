@@ -1,10 +1,36 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#24272b"><title>Relay Desk · openHop monitor</title><link rel="stylesheet" href="/style.css"><script defer src="/app.js"></script></head>
 <body><header><a href="/" class="brand"><span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 27l6-14 6 14m-9-6h6m-8 5h10"/><circle cx="16" cy="10" r="2"/><path d="M10.8 5.3a7 7 0 0 0 0 9.4m10.4-9.4a7 7 0 0 1 0 9.4M7.2 2.1a12 12 0 0 0 0 15.8M24.8 2.1a12 12 0 0 1 0 15.8"/></g></svg></span> Relay Desk</a><span class="product">openHop monitor</span><span id="mode"></span></header><div class="layout"><aside><label for="node">REPEATER</label><select id="node"></select><button id="manage" type="button">Manage repeaters</button><p class="caption">MONITORING</p><nav aria-label="Monitoring sections" id="nav"></nav></aside><main><div class="mast"><div><div class="caption" id="station"></div><h1 id="title">Overview</h1></div><button id="refresh">↻ Refresh</button></div><p id="state" role="status">Connecting…</p><section class="panel" id="map-panel" hidden><h2>Position map</h2><p id="map-status" role="status"></p><div id="map-screen"></div></section><section id="empty-fleet" aria-labelledby="empty-title" hidden>
-  <div class="signal-mark" aria-hidden="true"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 27l6-14 6 14m-9-6h6m-8 5h10"/><circle cx="16" cy="10" r="2"/><path d="M10.8 5.3a7 7 0 0 0 0 9.4m10.4-9.4a7 7 0 0 1 0 9.4M7.2 2.1a12 12 0 0 0 0 15.8M24.8 2.1a12 12 0 0 1 0 15.8"/></g></svg></div>
-  <h2 id="empty-title">No repeaters configured</h2>
+  <svg class="receiver-art" viewBox="0 0 340 232" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="metal" x2=".25" y2="1" gradientUnits="objectBoundingBox"><stop stop-color="#575a59"/><stop offset="1" stop-color="#303236"/></linearGradient>
+    <linearGradient id="face" x2="0" y2="1"><stop stop-color="#414446"/><stop offset=".55" stop-color="#27292c"/><stop offset="1" stop-color="#222426"/></linearGradient>
+    <pattern id="grille" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.8" fill="#0b0e10"/></pattern>
+  </defs>
+  <ellipse cx="171" cy="193" rx="129" ry="10" fill="#050606" opacity=".6"/>
+  <g stroke="#101213" stroke-width="2" stroke-linejoin="round">
+    <path fill="#252829" d="M59 179h31v13H59zm166 0h29v13h-29z"/>
+    <path fill="url(#metal)" d="m43 118 53-33 205 13-44 35z"/>
+    <path fill="#1e2122" d="m257 133 44-35v54l-44 36z"/>
+    <path fill="url(#face)" d="m43 118 214 15v55L43 172z"/>
+    <path fill="#aeb1ac" d="m237 97 5-3 5 2-4 3z"/>
+    <path fill="#393d3d" d="m238 94 13-75q1-4 5-2l-11 79z"/>
+    <path fill="#1d2021" d="m237 82 9 1-2 15-9-1z"/>
+    <path fill="#121714" d="m55 129 95 7v23l-95-7z"/>
+    <path fill="url(#grille)" d="m158 139 46 3v20l-46-3z"/>
+    <ellipse cx="229" cy="153" rx="12" ry="13" fill="#141618"/>
+    <ellipse cx="228" cy="152" rx="9" ry="10" fill="#484a48"/>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path stroke="#db985a" stroke-width="3" d="m228 151 3-5"/>
+    <path stroke="#717572" d="m46 119 209 15m4 0 39-31m-214 4 40-21m-29 22 40-21m-28 22 40-21m-27 22 40-21"/>
+    <path stroke="#484e4d" stroke-width="2" d="m264 142 27-21m-27 28 27-21m-27 28 27-21"/>
+    <path stroke="#dd894a" stroke-width="2" d="m53 165 40 3"/><path stroke="#c4c4b9" stroke-width="2" d="m97 168 14 1"/>
+  </g>
+</svg>
+  <div class="empty-copy"><h2 id="empty-title">No repeaters configured</h2>
   <p>Add a repeater to start viewing its telemetry.</p>
-  <button id="empty-manage" type="button">Manage repeaters</button>
+  <button id="empty-manage" type="button">Manage repeaters</button></div>
 </section><div id="content"></div></main></div><dialog id="manager" aria-labelledby="manager-title"><div class="dialog-head"><h2 id="manager-title">Manage repeaters</h2><button id="dismiss" type="button" aria-label="Close repeater manager">Close</button></div>
 <div id="managed-list"></div>
 <form id="add-form"><h3>Add repeater</h3><label for="repeater-name">Name</label><input id="repeater-name" maxlength="100" required autocomplete="off">

@@ -48,10 +48,43 @@ function activity(samples){
   }
   return p
 }
+// A seven-segment display for actual whole-number packet counters.
+const segmentPaths = [
+  'M3 1h10l-2 2H5z','M14 2v8l-2-1V4z','M14 12v8l-2-2v-5z',
+  'M3 21l2-2h6l2 2z','M2 12l2 1v5l-2 2z','M2 2l2 2v5l-2 1z','M3 11l2-1h6l2 1-2 1H5z'
+]
+const digitSegments = ['abcdef','bc','abdeg','abcdg','bcfg','acdfg','acdefg','abc','abcdefg','abcdfg']
+function counterDisplay(value){
+  const readout=el('strong',format(value))
+  if(!Number.isSafeInteger(value) || value<0 || value>99999999)return readout
+  const digits=String(value)
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg')
+  svg.setAttribute('viewBox','0 0 '+digits.length*17+' 23')
+  svg.setAttribute('aria-hidden','true')
+  svg.classList.add('counter-digits')
+  Array.from(digits).forEach((digit,index)=>{
+    segmentPaths.forEach((shape,segment)=>{
+      const path=document.createElementNS(svg.namespaceURI,'path')
+      path.setAttribute('d',shape)
+      path.setAttribute('transform','translate('+index*17+' 0)')
+      if(!digitSegments[Number(digit)].includes('abcdefg'[segment]))path.setAttribute('opacity','.09')
+      svg.append(path)
+    })
+  })
+  readout.replaceChildren(el('span',format(value),'visually-hidden'),svg)
+  return readout
+}
 function overview(r){
   const s=unpack(r.value)||{}, m=el('div',null,'metrics')
-  for(const [k,v] of [['Uptime',uptime(s.uptime_secs)],['Packets received',format(s.packets_received)],['Packets sent',format(s.packets_sent)],['Radio',s.radio_type??'—']]){
-    const n=el('div',null,'metric');n.append(el('span',k.toUpperCase(),'eyebrow'),el('strong',v));m.append(n)
+  for(const [label,display] of [
+    ['Uptime',el('strong',uptime(s.uptime_secs))],
+    ['Packets received',counterDisplay(s.packets_received)],
+    ['Packets sent',counterDisplay(s.packets_sent)],
+    ['Radio',el('strong',s.radio_type??'—')]
+  ]){
+    const n=el('div',null,'metric')
+    n.append(el('span',label.toUpperCase(),'eyebrow'),display)
+    m.append(n)
   }
   const grid=el('div',null,'two'),identity=panel('Repeater identity')
   identity.append(row('Site',s.site_name),row('Repeater version',s.version),row('Core version',s.core_version))
